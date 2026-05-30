@@ -38,6 +38,7 @@
 		B0484EEC0F0E7618F8685660 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3EC952C3151C62408D9FC7A /* ImportView.swift */; };
 		B2754F230D55AA4913563C3A /* PowerZoneLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35074892B4392C3DAEC525B /* PowerZoneLegend.swift */; };
 		CA206D085450BF0A8DE00F80 /* WorkoutDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A8263D6441E7EA0D3B5FF7 /* WorkoutDetails.swift */; };
+		D02A6663FD273656C9A4AFFE /* V5_FixWorkoutFilePrimaryKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7AC0ACDBFADB681F4E957C /* V5_FixWorkoutFilePrimaryKey.swift */; };
 		DE5A6BD3C69C9DCF45112926 /* MRCParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C38720A5978A4FEDF27D850 /* MRCParser.swift */; };
 		DE8D1946F6440854B8E96681 /* WorkoutCreatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8DF01AACA302A2DCC1895FA /* WorkoutCreatorTests.swift */; };
 		E46F1D32C825C2FD13304B6C /* V3_AddSnippetGUID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36723DBED8FE827624FE5A0A /* V3_AddSnippetGUID.swift */; };
@@ -105,6 +106,7 @@
 		E35074892B4392C3DAEC525B /* PowerZoneLegend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerZoneLegend.swift; sourceTree = "<group>"; };
 		EDEE4ED01CA3B34F518CC808 /* WorkoutRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRepository.swift; sourceTree = "<group>"; };
 		F1C03913C4C17F267D29A2C1 /* V1_InitialSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V1_InitialSchema.swift; sourceTree = "<group>"; };
+		FC7AC0ACDBFADB681F4E957C /* V5_FixWorkoutFilePrimaryKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5_FixWorkoutFilePrimaryKey.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +157,7 @@
 				2AA6466014108319D0E3FA9C /* V2_AddVideoFields.swift */,
 				36723DBED8FE827624FE5A0A /* V3_AddSnippetGUID.swift */,
 				4575A9220CF3993AAECD93B5 /* V4_AddIntervalRestThreshold.swift */,
+				FC7AC0ACDBFADB681F4E957C /* V5_FixWorkoutFilePrimaryKey.swift */,
 			);
 			path = Migrations;
 			sourceTree = "<group>";
@@ -413,6 +416,7 @@
 				2356525E4864DB550742E676 /* V2_AddVideoFields.swift in Sources */,
 				E46F1D32C825C2FD13304B6C /* V3_AddSnippetGUID.swift in Sources */,
 				68A9539ED3D085013A1EECE5 /* V4_AddIntervalRestThreshold.swift in Sources */,
+				D02A6663FD273656C9A4AFFE /* V5_FixWorkoutFilePrimaryKey.swift in Sources */,
 				1FD57DCD3EEEAB098686689E /* WorkoutChartView.swift in Sources */,
 				FE4FB4A7E30C5C2940E40DCC /* WorkoutCreatorApp.swift in Sources */,
 				CA206D085450BF0A8DE00F80 /* WorkoutDetails.swift in Sources */,

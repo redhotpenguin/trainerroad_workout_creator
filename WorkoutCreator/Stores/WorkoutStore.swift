@@ -7,6 +7,7 @@ final class WorkoutStore {
     var snippetList: [WorkoutFile] = []
     var currentWorkout: WorkoutFile?
     var currentDetails: WorkoutDetails?
+    var selectedWorkoutID: Int?
 
     private let repo: WorkoutRepository
 
@@ -26,6 +27,7 @@ final class WorkoutStore {
 
     func select(_ workout: WorkoutFile) {
         currentWorkout = workout
+        selectedWorkoutID = workout.id
         if let contents = workout.fileContents,
            let result = try? MRCParser.parse(contents) {
             currentDetails = result.details
@@ -36,9 +38,24 @@ final class WorkoutStore {
 
     func save() {
         guard var workout = currentWorkout,
-              let details = currentDetails,
+              var details = currentDetails,
               let memberID = Optional(workout.memberID)
         else { return }
+
+        // Derive the power curve from intervals (sorted by start time)
+        let sorted = details.intervals.sorted { $0.startSeconds < $1.startSeconds }
+        var points: [WorkoutPoint] = []
+        for interval in sorted {
+            let startMin = Double(interval.startSeconds) / 60
+            let endMin   = Double(interval.endSeconds)   / 60
+            if points.last?.minutes != startMin {
+                points.append(WorkoutPoint(minutes: startMin, ftpPercent: interval.power))
+            }
+            points.append(WorkoutPoint(minutes: endMin, ftpPercent: interval.power))
+        }
+        if !points.isEmpty {
+            details.workoutPoints = points.sorted { $0.minutes < $1.minutes }
+        }
 
         let mrc = MRCWriter.write(
             name: workout.name,
@@ -58,6 +75,7 @@ final class WorkoutStore {
         do {
             try repo.save(&workout)
             currentWorkout = workout
+            currentDetails = details          // update chart data with derived points
             if let id = workout.id {
                 if let idx = workoutList.firstIndex(where: { $0.id == id }) {
                     workoutList[idx] = workout
@@ -74,7 +92,7 @@ final class WorkoutStore {
         ]
         let details = WorkoutDetails(
             workoutPoints: defaultPoints,
-            intervals: [WorkoutInterval(startSeconds: 0, endSeconds: 3600, name: "Workout")],
+            intervals: [WorkoutInterval(startSeconds: 0, endSeconds: 3600, name: "Workout", power: 50)],
             cuePoints: []
         )
         let mrc = MRCWriter.write(

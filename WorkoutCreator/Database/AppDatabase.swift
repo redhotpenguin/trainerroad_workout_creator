@@ -34,6 +34,7 @@ final class AppDatabase {
         migrator.registerMigration(V2_AddVideoFields.identifier, migrate: V2_AddVideoFields.migrate)
         migrator.registerMigration(V3_AddSnippetGUID.identifier, migrate: V3_AddSnippetGUID.migrate)
         migrator.registerMigration(V4_AddIntervalRestThreshold.identifier, migrate: V4_AddIntervalRestThreshold.migrate)
+        migrator.registerMigration(V5_FixWorkoutFilePrimaryKey.identifier, migrate: V5_FixWorkoutFilePrimaryKey.migrate)
         try migrator.migrate(dbQueue)
     }
 }

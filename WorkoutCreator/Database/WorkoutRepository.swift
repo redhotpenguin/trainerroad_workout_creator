@@ -96,15 +96,16 @@ final class WorkoutRepository {
     struct WorkoutIDRecord {
         var id: Int
         var lastUpdateTicks: Double
+        var isDirty: Bool
     }
 
     func fetchIDs() throws -> [WorkoutIDRecord] {
         try dbQueue.read { db in
             let rows = try Row.fetchAll(
                 db,
-                sql: "SELECT WorkoutFileID, LastUpdateTicks FROM workoutFile WHERE WorkoutFileID != -1"
+                sql: "SELECT WorkoutFileID, LastUpdateTicks, IsDirty FROM workoutFile WHERE WorkoutFileID != -1"
             )
-            return rows.map { WorkoutIDRecord(id: $0["WorkoutFileID"], lastUpdateTicks: $0["LastUpdateTicks"]) }
+            return rows.map { WorkoutIDRecord(id: $0["WorkoutFileID"], lastUpdateTicks: $0["LastUpdateTicks"], isDirty: $0["IsDirty"]) }
         }
     }
 }

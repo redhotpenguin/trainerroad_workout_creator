@@ -39,7 +39,6 @@ final class WorkoutSyncService {
         do {
             // 1. Fetch server ID list
             let serverIDs = try await client.fetchWorkoutIDs()
-            print("[Sync] userMemberID at start = \(userMemberID)")
             print("[Sync] Server has \(serverIDs.count) workout IDs")
 
             let serverMap = Dictionary(uniqueKeysWithValues: serverIDs.map { ($0.id, $0.updated) })
@@ -64,10 +63,6 @@ final class WorkoutSyncService {
             for (i, batch) in batches.enumerated() {
                 do {
                     let workouts = try await client.fetchWorkouts(ids: batch)
-                    if i == 0 {
-                        print("[Sync] Sample memberIDs from batch 0: \(workouts.prefix(5).map { "\($0.id ?? -1)→\($0.memberID)" })")
-                        print("[Sync] userMemberID = \(userMemberID)")
-                    }
                     for var w in workouts {
                         if w.memberID == userMemberID {
                             try repo.save(&w)
@@ -100,9 +95,9 @@ final class WorkoutSyncService {
                 progress = 0.8 + 0.2 * (Double(i + 1) / Double(max(dirty.count, 1)))
             }
 
-            // 4. Soft-delete local workouts absent from server
+            // 4. Soft-delete local workouts absent from server, but keep dirty (unsynced) ones
             let serverIDSet = Set(serverMap.keys)
-            for record in localRecords where !serverIDSet.contains(record.id) {
+            for record in localRecords where !serverIDSet.contains(record.id) && !record.isDirty {
                 try repo.softDelete(id: record.id)
             }
 

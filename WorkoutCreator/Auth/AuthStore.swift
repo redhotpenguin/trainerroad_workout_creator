@@ -25,6 +25,19 @@ final class AuthStore {
         isLoggingIn = false
     }
 
+    private func authenticate(username: String, password: String) async {
+        isLoggingIn = true
+        do {
+            let client = TrainerRoadClient(username: username, password: password)
+            let member = try await client.authenticate()
+            self.client = client
+            self.currentMember = member
+        } catch {
+            // Silently fail — stale credentials; user will need to log in again
+        }
+        isLoggingIn = false
+    }
+
     func logout() {
         KeychainHelper.delete()
         currentMember = nil
@@ -33,7 +46,7 @@ final class AuthStore {
 
     func restoreSession() async {
         guard let (username, password) = KeychainHelper.load() else { return }
-        await login(username: username, password: password)
+        await authenticate(username: username, password: password)
     }
 
     func makeClient() -> TrainerRoadClient? {

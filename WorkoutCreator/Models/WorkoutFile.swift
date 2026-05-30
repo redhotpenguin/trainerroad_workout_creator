@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-struct WorkoutFile: Identifiable, Codable, Hashable, FetchableRecord, MutablePersistableRecord {
+struct WorkoutFile: Identifiable, Codable, FetchableRecord, MutablePersistableRecord {
     static let databaseTableName = "workoutFile"
 
     var id: Int?
@@ -165,4 +165,9 @@ extension WorkoutFile {
         snippetGUID           = try? c.decode(String.self, forKey: .snippetGUID)
         intervalRestThreshold = try? c.decode(Int.self,    forKey: .intervalRestThreshold)
     }
+}
+
+extension WorkoutFile: Hashable {
+    static func == (lhs: WorkoutFile, rhs: WorkoutFile) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }

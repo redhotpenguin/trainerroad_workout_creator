@@ -19,9 +19,23 @@ struct WorkoutListView: View {
 
     var body: some View {
         @Bindable var store = store
-        List(filteredWorkouts, selection: $store.currentWorkout) { workout in
+        List(filteredWorkouts, selection: $store.selectedWorkoutID) { workout in
             WorkoutRow(workout: workout)
-                .tag(workout)
+                .tag(workout.id)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        store.delete(workout)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        store.delete(workout)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
         }
         .searchable(text: $searchText, prompt: "Search workouts")
         .toolbar {
@@ -47,6 +61,20 @@ struct WorkoutListView: View {
                 }
                 .help("Show snippets")
             }
+            ToolbarItem {
+                Button {
+                    guard let member = authStore.currentMember,
+                          let client = authStore.makeClient() else { return }
+                    Task {
+                        await syncService.sync(client: client, userMemberID: member.memberID)
+                        store.load(memberID: member.memberID)
+                    }
+                } label: {
+                    Image(systemName: syncService.isSyncing ? "arrow.triangle.2.circlepath" : "arrow.clockwise")
+                }
+                .disabled(syncService.isSyncing)
+                .help("Sync now")
+            }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -54,8 +82,11 @@ struct WorkoutListView: View {
                 syncStatusBar
             }
         }
-        .onChange(of: store.currentWorkout) { _, workout in
-            if let workout { store.select(workout) }
+        .onChange(of: store.selectedWorkoutID) { _, id in
+            guard let id,
+                  let workout = store.workoutList.first(where: { $0.id == id })
+            else { return }
+            store.select(workout)
         }
     }
 

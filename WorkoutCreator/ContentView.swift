@@ -42,7 +42,6 @@ struct ContentView: View {
         workoutStore.load(memberID: memberID)
 
         guard let client = authStore.makeClient() else { return }
-        syncService.clearProcessedIDs()   // TODO: remove after memberID mismatch is diagnosed
         await syncService.sync(client: client, userMemberID: memberID)
 
         // Reload after sync so newly downloaded workouts appear

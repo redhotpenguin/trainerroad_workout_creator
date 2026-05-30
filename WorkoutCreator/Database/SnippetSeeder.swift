@@ -26,7 +26,7 @@ struct SnippetSeeder {
 
             let duration = (parsed.details.workoutPoints.last?.minutes ?? 0) * 60
             let now = ISO8601DateFormatter().string(from: Date())
-            var snippet = WorkoutFile(
+            let snippet = WorkoutFile(
                 id: -1,
                 name: parsed.name,
                 fileURL: nil,

@@ -90,7 +90,7 @@ struct WorkoutChartView: View {
                     y: .value("FTP%", point.ftpPercent)
                 )
                 .foregroundStyle(.blue.opacity(0.25))
-                .interpolationMethod(.stepEnd)
+                .interpolationMethod(.stepStart)
 
                 LineMark(
                     x: .value("Minutes", point.minutes),
@@ -98,25 +98,38 @@ struct WorkoutChartView: View {
                 )
                 .foregroundStyle(.blue)
                 .lineStyle(StrokeStyle(lineWidth: 1.5))
-                .interpolationMethod(.stepEnd)
+                .interpolationMethod(.stepStart)
             }
 
-            // Interval boundary lines
-            ForEach(intervals) { interval in
+            // Interval regions + boundary lines
+            ForEach(Array(intervals.enumerated()), id: \.element.id) { i, interval in
                 let startMin = Double(interval.startSeconds) / 60
                 let endMin = Double(interval.endSeconds) / 60
+                let colors: [Color] = [.orange, .teal, .green, .purple, .red]
+                let color = colors[i % colors.count]
+
+                RectangleMark(
+                    xStart: .value("Start", startMin),
+                    xEnd: .value("End", endMin),
+                    yStart: .value("Min", 0),
+                    yEnd: .value("Max", 150)
+                )
+                .foregroundStyle(color.opacity(0.07))
+
                 if startMin > 0 {
                     RuleMark(x: .value("Start", startMin))
                         .foregroundStyle(.secondary.opacity(0.4))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                        .annotation(position: .top, alignment: .leading) {
-                            Text(interval.name)
-                                .font(.system(size: 9))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .fixedSize()
-                        }
                 }
+                RuleMark(x: .value("Label", startMin + (endMin - startMin) / 2))
+                    .opacity(0)
+                    .annotation(position: .top, alignment: .center) {
+                        Text(interval.name)
+                            .font(.system(size: 9))
+                            .foregroundStyle(color.opacity(0.8))
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
                 if endMin < maxMinutes {
                     RuleMark(x: .value("End", endMin))
                         .foregroundStyle(.secondary.opacity(0.4))

@@ -25,7 +25,13 @@ struct MRCParser {
         let workoutPoints = try parseDataLines(dataLines)
 
         let intervalLines = (try? extractSection(lines, start: "[INTERVAL DATA]", end: "[END INTERVAL DATA]")) ?? []
-        let intervals = try parseIntervalLines(intervalLines)
+        var intervals = try parseIntervalLines(intervalLines)
+        // Populate power for each interval from the course data (step-end: power = last point at or before interval start)
+        for i in intervals.indices {
+            let startMin = Double(intervals[i].startSeconds) / 60
+            let point = workoutPoints.last(where: { $0.minutes <= startMin + 0.01 }) ?? workoutPoints.first
+            intervals[i].power = point?.ftpPercent ?? 50
+        }
 
         let textLines = (try? extractSection(lines, start: "[COURSE TEXT]", end: "[END COURSE TEXT]")) ?? []
         let cuePoints = try parseCueLines(textLines)
