@@ -1,0 +1,55 @@
+name: WorkoutCreator
+options:
+  minimumXcodeGenVersion: "2.40"
+  deploymentTarget:
+    macOS: "14.0"
+  bundleIdPrefix: com.phred
+  createIntermediateGroups: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "6.29.3"
+
+targets:
+  WorkoutCreator:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: WorkoutCreator
+        excludes:
+          - Resources/DefaultSnippets
+      - path: WorkoutCreator/Resources/DefaultSnippets
+        type: folder
+    resources:
+      - path: WorkoutCreator/Resources/Assets.xcassets
+    dependencies:
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phred.WorkoutCreator
+        PRODUCT_NAME: WorkoutCreator
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_ENTITLEMENTS: WorkoutCreator/WorkoutCreator.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_FILE: WorkoutCreator/Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+
+  WorkoutCreatorTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - WorkoutCreatorTests
+    dependencies:
+      - target: WorkoutCreator
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phred.WorkoutCreatorTests
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: YES

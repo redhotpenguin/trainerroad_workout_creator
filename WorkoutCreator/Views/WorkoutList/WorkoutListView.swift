@@ -1,0 +1,81 @@
+import SwiftUI
+
+struct WorkoutListView: View {
+    @Environment(WorkoutStore.self) private var store
+    @Environment(WorkoutSyncService.self) private var syncService
+    @Environment(AuthStore.self) private var authStore
+    @State private var searchText = ""
+    @State private var showFavoritesOnly = false
+    @State private var showSnippets = false
+
+    private var filteredWorkouts: [WorkoutFile] {
+        var list = store.workoutList
+        if showFavoritesOnly { list = list.filter { $0.isFavorite } }
+        if !searchText.isEmpty {
+            list = list.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+        return list
+    }
+
+    var body: some View {
+        @Bindable var store = store
+        List(filteredWorkouts, selection: $store.currentWorkout) { workout in
+            WorkoutRow(workout: workout)
+                .tag(workout)
+        }
+        .searchable(text: $searchText, prompt: "Search workouts")
+        .toolbar {
+            ToolbarItem {
+                Button {
+                    if let member = authStore.currentMember {
+                        store.newWorkout(memberID: member.memberID)
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .help("New Workout")
+            }
+            ToolbarItem {
+                Toggle(isOn: $showFavoritesOnly) {
+                    Image(systemName: showFavoritesOnly ? "star.fill" : "star")
+                }
+                .help("Favorites only")
+            }
+            ToolbarItem {
+                Toggle(isOn: $showSnippets) {
+                    Image(systemName: "square.stack")
+                }
+                .help("Show snippets")
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                if showSnippets { SnippetPaletteView() }
+                syncStatusBar
+            }
+        }
+        .onChange(of: store.currentWorkout) { _, workout in
+            if let workout { store.select(workout) }
+        }
+    }
+
+    private var syncStatusBar: some View {
+        HStack {
+            if syncService.isSyncing {
+                ProgressView(value: syncService.progress)
+                    .progressViewStyle(.linear)
+                    .frame(maxWidth: .infinity)
+                Text("Syncing…")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else if let date = syncService.lastSyncDate {
+                Text("Last sync: \(date.formatted(.relative(presentation: .named)))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.bar)
+    }
+}

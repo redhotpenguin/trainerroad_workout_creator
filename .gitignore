@@ -1,0 +1,13 @@
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+DerivedData/
+.build/
+*.o
+*.d
+
+# macOS
+.DS_Store
+
+# SPM resolved file (keep Package.resolved for reproducibility)
