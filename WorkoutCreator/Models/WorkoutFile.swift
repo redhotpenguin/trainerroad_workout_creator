@@ -168,6 +168,15 @@ extension WorkoutFile {
 }
 
 extension WorkoutFile: Hashable {
-    static func == (lhs: WorkoutFile, rhs: WorkoutFile) -> Bool { lhs.id == rhs.id }
+    // Compare display-relevant fields so SwiftUI re-renders rows when name/badges change.
+    // Hash stays on id to keep Set/Dictionary identity stable.
+    static func == (lhs: WorkoutFile, rhs: WorkoutFile) -> Bool {
+        lhs.id == rhs.id
+            && lhs.name == rhs.name
+            && lhs.isFavorite == rhs.isFavorite
+            && lhs.isDirty == rhs.isDirty
+            && lhs.tss == rhs.tss
+            && lhs.duration == rhs.duration
+    }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }

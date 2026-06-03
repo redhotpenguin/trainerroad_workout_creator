@@ -42,19 +42,20 @@ final class WorkoutStore {
               let memberID = Optional(workout.memberID)
         else { return }
 
-        // Derive the power curve from intervals (sorted by start time)
+        // Derive the power curve from intervals (sorted by start time).
+        // Always emit both start and end points per interval. Two points at the
+        // same minute encode a step transition in MRC; collapsing them makes the
+        // player interpolate linearly between intervals (producing a ramp).
         let sorted = details.intervals.sorted { $0.startSeconds < $1.startSeconds }
         var points: [WorkoutPoint] = []
         for interval in sorted {
             let startMin = Double(interval.startSeconds) / 60
             let endMin   = Double(interval.endSeconds)   / 60
-            if points.last?.minutes != startMin {
-                points.append(WorkoutPoint(minutes: startMin, ftpPercent: interval.power))
-            }
+            points.append(WorkoutPoint(minutes: startMin, ftpPercent: interval.power))
             points.append(WorkoutPoint(minutes: endMin, ftpPercent: interval.power))
         }
         if !points.isEmpty {
-            details.workoutPoints = points.sorted { $0.minutes < $1.minutes }
+            details.workoutPoints = points
         }
 
         let mrc = MRCWriter.write(

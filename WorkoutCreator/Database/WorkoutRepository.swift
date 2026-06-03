@@ -38,6 +38,16 @@ final class WorkoutRepository {
         }
     }
 
+    /// Fetch by ID without filtering on IsActive — used to load soft-deleted
+    /// workouts for server-side cleanup.
+    func fetchAny(id: Int) throws -> WorkoutFile? {
+        try dbQueue.read { db in
+            try WorkoutFile
+                .filter(Column("WorkoutFileID") == id)
+                .fetchOne(db)
+        }
+    }
+
     func save(_ workout: inout WorkoutFile) throws {
         try dbQueue.write { db in
             try workout.save(db)
@@ -85,9 +95,13 @@ final class WorkoutRepository {
     }
 
     func fetchDirty() throws -> [WorkoutFile] {
+        // IsActive filter excludes soft-deleted workouts so we don't republish
+        // ghosts. softDelete() leaves IsDirty alone, so without this filter
+        // every locally-deleted workout would be uploaded on the next sync.
         try dbQueue.read { db in
             try WorkoutFile
                 .filter(Column("IsDirty") == true)
+                .filter(Column("IsActive") == true)
                 .filter(Column("WorkoutFileID") != -1)
                 .fetchAll(db)
         }
@@ -97,15 +111,27 @@ final class WorkoutRepository {
         var id: Int
         var lastUpdateTicks: Double
         var isDirty: Bool
+        var isActive: Bool
     }
 
     func fetchIDs() throws -> [WorkoutIDRecord] {
         try dbQueue.read { db in
             let rows = try Row.fetchAll(
                 db,
-                sql: "SELECT WorkoutFileID, LastUpdateTicks, IsDirty FROM workoutFile WHERE WorkoutFileID != -1"
+                sql: "SELECT WorkoutFileID, LastUpdateTicks, IsDirty, IsActive FROM workoutFile WHERE WorkoutFileID != -1"
             )
-            return rows.map { WorkoutIDRecord(id: $0["WorkoutFileID"], lastUpdateTicks: $0["LastUpdateTicks"], isDirty: $0["IsDirty"]) }
+            return rows.map { WorkoutIDRecord(
+                id: $0["WorkoutFileID"],
+                lastUpdateTicks: $0["LastUpdateTicks"],
+                isDirty: $0["IsDirty"],
+                isActive: $0["IsActive"]
+            )}
+        }
+    }
+
+    func hardDelete(id: Int) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM workoutFile WHERE WorkoutFileID = ?", arguments: [id])
         }
     }
 }

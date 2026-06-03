@@ -37,6 +37,7 @@
 		AC825D16590593AF60F218A8 /* Member.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D1118300C886E18CCA9E9C1 /* Member.swift */; };
 		B0484EEC0F0E7618F8685660 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3EC952C3151C62408D9FC7A /* ImportView.swift */; };
 		B2754F230D55AA4913563C3A /* PowerZoneLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35074892B4392C3DAEC525B /* PowerZoneLegend.swift */; };
+		C8718BA77F25B7076486E6C1 /* V6_ClearDirtyOnInactive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88230C6D6D948148B36DD61D /* V6_ClearDirtyOnInactive.swift */; };
 		CA206D085450BF0A8DE00F80 /* WorkoutDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A8263D6441E7EA0D3B5FF7 /* WorkoutDetails.swift */; };
 		D02A6663FD273656C9A4AFFE /* V5_FixWorkoutFilePrimaryKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7AC0ACDBFADB681F4E957C /* V5_FixWorkoutFilePrimaryKey.swift */; };
 		DE5A6BD3C69C9DCF45112926 /* MRCParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C38720A5978A4FEDF27D850 /* MRCParser.swift */; };
@@ -84,6 +85,7 @@
 		7639DF20A82667193424F15A /* WorkoutStatsBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStatsBadge.swift; sourceTree = "<group>"; };
 		76EACAFA5EDD95B4E3C20219 /* MRCWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MRCWriter.swift; sourceTree = "<group>"; };
 		836893B49C6614594394E692 /* WorkoutInterval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutInterval.swift; sourceTree = "<group>"; };
+		88230C6D6D948148B36DD61D /* V6_ClearDirtyOnInactive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V6_ClearDirtyOnInactive.swift; sourceTree = "<group>"; };
 		8C361E1DCD27DA879D9FFB29 /* CuePoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuePoint.swift; sourceTree = "<group>"; };
 		8C38720A5978A4FEDF27D850 /* MRCParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MRCParser.swift; sourceTree = "<group>"; };
 		9BD4177E83DE1610F88CD9C5 /* WorkoutEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEditorView.swift; sourceTree = "<group>"; };
@@ -158,6 +160,7 @@
 				36723DBED8FE827624FE5A0A /* V3_AddSnippetGUID.swift */,
 				4575A9220CF3993AAECD93B5 /* V4_AddIntervalRestThreshold.swift */,
 				FC7AC0ACDBFADB681F4E957C /* V5_FixWorkoutFilePrimaryKey.swift */,
+				88230C6D6D948148B36DD61D /* V6_ClearDirtyOnInactive.swift */,
 			);
 			path = Migrations;
 			sourceTree = "<group>";
@@ -417,6 +420,7 @@
 				E46F1D32C825C2FD13304B6C /* V3_AddSnippetGUID.swift in Sources */,
 				68A9539ED3D085013A1EECE5 /* V4_AddIntervalRestThreshold.swift in Sources */,
 				D02A6663FD273656C9A4AFFE /* V5_FixWorkoutFilePrimaryKey.swift in Sources */,
+				C8718BA77F25B7076486E6C1 /* V6_ClearDirtyOnInactive.swift in Sources */,
 				1FD57DCD3EEEAB098686689E /* WorkoutChartView.swift in Sources */,
 				FE4FB4A7E30C5C2940E40DCC /* WorkoutCreatorApp.swift in Sources */,
 				CA206D085450BF0A8DE00F80 /* WorkoutDetails.swift in Sources */,

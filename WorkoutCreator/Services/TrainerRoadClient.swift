@@ -24,8 +24,10 @@ actor TrainerRoadClient {
         var lastUpdate: String?
 
         enum CodingKeys: String, CodingKey {
-            case workoutFileID = "WorkoutFileId"
-            case previousWorkoutFileID = "PreviousWorkoutFileId"
+            // Note: the publish response uses uppercase "ID" (unlike the WorkoutFile
+            // GET endpoints which use lowercase "Id").
+            case workoutFileID = "WorkoutFileID"
+            case previousWorkoutFileID = "PreviousWorkoutFileID"
             case isSuccessful = "IsSuccessful"
             case lastUpdate = "LastUpdate"
         }
@@ -68,30 +70,51 @@ actor TrainerRoadClient {
         return try decoder.decode([WorkoutFile].self, from: data)
     }
 
-    func publishWorkout(_ workout: WorkoutFile) async throws -> PublishResult {
+    func publishWorkout(_ workout: WorkoutFile, isNew: Bool) async throws -> PublishResult {
         var payload = workout
         payload.intensityFactor = workout.intensityFactor / 100.0
+        // For new workouts the local `id` is a SQLite rowid that means nothing
+        // to the server — send null so the server creates a fresh record.
+        // Otherwise keep the server-assigned id so this becomes an update.
+        if isNew {
+            payload.id = nil
+        }
 
         let json = try JSONEncoder().encode(payload)
-        guard let compressed = gzipCompress(json) else {
-            throw URLError(.cannotDecodeContentData)
-        }
-        let body = compressed.base64EncodedData()
 
         var request = makeRequest(path: "/workoutfiles", method: "PUT")
-        request.setValue("application/deflate", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = json
 
-        let (data, _) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if let raw = String(data: data, encoding: .utf8) {
+            print("[TrainerRoad] PUT /workoutfiles status=\(status) body=\(raw.prefix(500))")
+        }
         return try JSONDecoder().decode(PublishResult.self, from: data)
     }
 
-    func deleteWorkout(id: Int) async throws {
-        var request = makeRequest(path: "/workoutfiles", method: "DELETE")
-        let body = try JSONEncoder().encode(["WorkoutFileID": id])
-        request.httpBody = body
+    /// TR has no true DELETE endpoint; "deleting" is done by PUTting the workout
+    /// back with IsActive=false (the same pattern the publish path uses).
+    func deleteWorkout(_ workout: WorkoutFile) async throws {
+        var payload = workout
+        payload.isActive = false
+        payload.intensityFactor = workout.intensityFactor / 100.0
+
+        let json = try JSONEncoder().encode(payload)
+
+        var request = makeRequest(path: "/workoutfiles", method: "PUT")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        _ = try await session.data(for: request)
+        request.httpBody = json
+
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if let raw = String(data: data, encoding: .utf8) {
+            print("[TrainerRoad] PUT (delete) /workoutfiles id=\(workout.id ?? -1) status=\(status) body=\(raw.prefix(300))")
+        }
+        if !(200..<300).contains(status) {
+            throw URLError(.badServerResponse)
+        }
     }
 
     private func makeRequest(path: String, method: String) -> URLRequest {

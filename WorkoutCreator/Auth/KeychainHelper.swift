@@ -9,15 +9,21 @@ enum KeychainHelper {
         let combined = "\(username):\(password)"
         guard let data = combined.data(using: .utf8) else { return }
 
-        delete()
-
+        // Prefer Update over Delete+Add so the user sees one keychain prompt
+        // (Delete and Add are separate authorized operations on macOS).
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: data
+            kSecAttrAccount as String: account
         ]
-        SecItemAdd(query as CFDictionary, nil)
+        let attributes: [String: Any] = [kSecValueData as String: data]
+
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            var addQuery = query
+            addQuery[kSecValueData as String] = data
+            SecItemAdd(addQuery as CFDictionary, nil)
+        }
     }
 
     static func load() -> (username: String, password: String)? {

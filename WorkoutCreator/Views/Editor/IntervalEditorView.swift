@@ -32,22 +32,31 @@ struct IntervalEditorView: View {
                 ForEach(intervals.indices, id: \.self) { i in
                     IntervalRow(
                         interval: intervals[i],
-                        onStartChange: { newMin in
-                            let clamped = max(0, min(newMin, intervals.wrappedValue[i].endSeconds / 60 - 1))
-                            intervals.wrappedValue[i].startSeconds = clamped * 60
-                            // Push previous interval's end to match
-                            if i > 0 {
-                                intervals.wrappedValue[i - 1].endSeconds = clamped * 60
+                        onLengthChange: { newLengthMin in
+                            let startMin = intervals.wrappedValue[i].startSeconds / 60
+                            let clamped  = max(1, newLengthMin)
+                            let newEnd   = (startMin + clamped) * 60
+                            intervals.wrappedValue[i].endSeconds = newEnd
+                            // Push next interval's start; if that would invert it
+                            // (start >= end), bump its end so it keeps ≥1 min duration.
+                            if i < intervals.wrappedValue.count - 1 {
+                                intervals.wrappedValue[i + 1].startSeconds = newEnd
+                                if intervals.wrappedValue[i + 1].endSeconds <= newEnd {
+                                    intervals.wrappedValue[i + 1].endSeconds = newEnd + 60
+                                }
                             }
                             store.save()
                         },
-                        onEndChange: { newMin in
-                            let clamped = max(intervals.wrappedValue[i].startSeconds / 60 + 1, min(newMin, 480))
-                            intervals.wrappedValue[i].endSeconds = clamped * 60
-                            // Push next interval's start to match
-                            if i < intervals.wrappedValue.count - 1 {
-                                intervals.wrappedValue[i + 1].startSeconds = clamped * 60
-                            }
+                        onClone: {
+                            let source = intervals.wrappedValue[i]
+                            let length = source.endSeconds - source.startSeconds
+                            let newStart = intervals.wrappedValue.last?.endSeconds ?? source.endSeconds
+                            intervals.wrappedValue.append(WorkoutInterval(
+                                startSeconds: newStart,
+                                endSeconds: newStart + length,
+                                name: source.name,
+                                power: source.power
+                            ))
                             store.save()
                         },
                         onDelete: {
@@ -70,13 +79,13 @@ struct IntervalEditorView: View {
 
 private struct IntervalRow: View {
     @Binding var interval: WorkoutInterval
-    let onStartChange: (Int) -> Void
-    let onEndChange: (Int) -> Void
+    let onLengthChange: (Int) -> Void
+    let onClone: () -> Void
     let onDelete: () -> Void
     let onCommit: () -> Void
 
-    private var startMin: Int { interval.startSeconds / 60 }
-    private var endMin: Int   { interval.endSeconds   / 60 }
+    private var startMin:  Int { interval.startSeconds / 60 }
+    private var lengthMin: Int { max(1, (interval.endSeconds - interval.startSeconds) / 60) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -87,6 +96,12 @@ private struct IntervalRow: View {
 
                 Spacer()
 
+                Button(action: onClone) {
+                    Image(systemName: "plus.square.on.square")
+                }
+                .buttonStyle(.borderless)
+                .help("Clone interval")
+
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "minus.circle.fill")
                         .foregroundStyle(.red)
@@ -95,32 +110,17 @@ private struct IntervalRow: View {
             }
 
             HStack(spacing: 12) {
-                // Start time
-                LabeledContent("Start") {
-                    HStack(spacing: 2) {
-                        TextField("", value: Binding(
-                            get: { startMin },
-                            set: { onStartChange($0) }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 44)
-                        .multilineTextAlignment(.trailing)
-                        .onSubmit(onCommit)
-                        Text("min").foregroundStyle(.secondary)
-                        Stepper("", value: Binding(
-                            get: { startMin },
-                            set: { onStartChange($0) }
-                        ), in: 0...(endMin - 1))
-                        .labelsHidden()
-                    }
-                }
+                // Start (read-only context)
+                Text("@ \(startMin) min")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
 
-                // End time
-                LabeledContent("End") {
+                // Length
+                LabeledContent("Length") {
                     HStack(spacing: 2) {
                         TextField("", value: Binding(
-                            get: { endMin },
-                            set: { onEndChange($0) }
+                            get: { lengthMin },
+                            set: { onLengthChange($0) }
                         ), format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 44)
@@ -128,9 +128,9 @@ private struct IntervalRow: View {
                         .onSubmit(onCommit)
                         Text("min").foregroundStyle(.secondary)
                         Stepper("", value: Binding(
-                            get: { endMin },
-                            set: { onEndChange($0) }
-                        ), in: (startMin + 1)...480)
+                            get: { lengthMin },
+                            set: { onLengthChange($0) }
+                        ), in: 1...480)
                         .labelsHidden()
                     }
                 }

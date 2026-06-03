@@ -35,6 +35,7 @@ final class AppDatabase {
         migrator.registerMigration(V3_AddSnippetGUID.identifier, migrate: V3_AddSnippetGUID.migrate)
         migrator.registerMigration(V4_AddIntervalRestThreshold.identifier, migrate: V4_AddIntervalRestThreshold.migrate)
         migrator.registerMigration(V5_FixWorkoutFilePrimaryKey.identifier, migrate: V5_FixWorkoutFilePrimaryKey.migrate)
+        migrator.registerMigration(V6_ClearDirtyOnInactive.identifier, migrate: V6_ClearDirtyOnInactive.migrate)
         try migrator.migrate(dbQueue)
     }
 }

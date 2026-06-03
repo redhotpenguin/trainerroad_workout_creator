@@ -9,12 +9,16 @@ enum PowerMetrics {
 
     static func expandToSeconds(_ points: [WorkoutPoint]) -> [Double] {
         guard points.count >= 2 else { return [] }
+        // Sort defensively: input may contain adjacent step pairs in either order,
+        // or — in case of inverted/overlapping intervals — points that go backwards
+        // and would crash the per-second expansion below.
+        let sorted = points.sorted { $0.minutes < $1.minutes }
         var seconds: [Double] = []
-        let totalSeconds = Int(points.last!.minutes * 60)
+        let totalSeconds = Int(sorted.last!.minutes * 60)
 
-        for i in 0..<(points.count - 1) {
-            let p1 = points[i]
-            let p2 = points[i + 1]
+        for i in 0..<(sorted.count - 1) {
+            let p1 = sorted[i]
+            let p2 = sorted[i + 1]
             let startSec = Int(p1.minutes * 60)
             let endSec = Int(p2.minutes * 60)
             let isStep = p1.minutes == p2.minutes
@@ -37,7 +41,7 @@ enum PowerMetrics {
 
         // Pad or trim to exact totalSeconds
         while seconds.count < totalSeconds {
-            seconds.append(points.last?.ftpPercent ?? 0)
+            seconds.append(sorted.last?.ftpPercent ?? 0)
         }
         return Array(seconds.prefix(totalSeconds))
     }

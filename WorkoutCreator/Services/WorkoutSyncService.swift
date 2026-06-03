@@ -80,25 +80,52 @@ final class WorkoutSyncService {
             print("[Sync] Saved \(saved) user workouts")
 
             // 3. Push dirty workouts
+            let serverIDSet = Set(serverMap.keys)
             let dirty = try repo.fetchDirty()
+            print("[Sync] Pushing \(dirty.count) dirty workouts")
             for (i, workout) in dirty.enumerated() {
-                if let result = try? await client.publishWorkout(workout), result.isSuccessful {
-                    if let oldID = workout.id {
+                let isNew = !serverIDSet.contains(workout.id ?? -1)
+                do {
+                    let result = try await client.publishWorkout(workout, isNew: isNew)
+                    if result.isSuccessful, let oldID = workout.id {
                         try repo.markSynced(
                             id: oldID,
                             newID: result.workoutFileID,
                             lastUpdate: result.lastUpdate ?? "",
                             lastUpdateTicks: 0
                         )
+                        print("[Sync] Published workout \(oldID) → \(result.workoutFileID)")
+                    } else {
+                        print("[Sync] Publish failed for workout \(workout.id ?? -1): isSuccessful=\(result.isSuccessful)")
                     }
+                } catch {
+                    print("[Sync] Publish error for workout \(workout.id ?? -1): \(error)")
                 }
                 progress = 0.8 + 0.2 * (Double(i + 1) / Double(max(dirty.count, 1)))
             }
 
             // 4. Soft-delete local workouts absent from server, but keep dirty (unsynced) ones
-            let serverIDSet = Set(serverMap.keys)
             for record in localRecords where !serverIDSet.contains(record.id) && !record.isDirty {
                 try repo.softDelete(id: record.id)
+            }
+
+            // 5. Push local soft-deletes up to the server. Locally-inactive workouts
+            // that still exist on the server are ghosts (often from prior failed publishes
+            // before the decode bug was fixed). "Delete" on TR is a PUT with
+            // IsActive=false; afterwards we hard-delete the local row.
+            let toDeleteOnServer = localRecords.filter { !$0.isActive && serverIDSet.contains($0.id) }
+            if !toDeleteOnServer.isEmpty {
+                print("[Sync] Deleting \(toDeleteOnServer.count) ghost workouts from server")
+            }
+            for record in toDeleteOnServer {
+                guard let workout = try? repo.fetchAny(id: record.id) else { continue }
+                do {
+                    try await client.deleteWorkout(workout)
+                    try repo.hardDelete(id: record.id)
+                    print("[Sync] Deleted server workout \(record.id)")
+                } catch {
+                    print("[Sync] Delete error for workout \(record.id): \(error)")
+                }
             }
 
             progress = 1.0
