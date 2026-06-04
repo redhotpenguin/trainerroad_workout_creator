@@ -19,7 +19,8 @@ struct IntervalEditorView: View {
                 Button {
                     let lastEnd = store.currentDetails?.intervals.last?.endSeconds ?? 3600
                     store.currentDetails?.intervals.append(
-                        WorkoutInterval(startSeconds: lastEnd, endSeconds: lastEnd + 600, name: "New Interval", power: 75)
+                        // Empty name → save() auto-assigns "<Zone> <N>" from the power.
+                        WorkoutInterval(startSeconds: lastEnd, endSeconds: lastEnd + 600, name: "", power: 75)
                     )
                     store.save()
                 } label: {
@@ -33,17 +34,19 @@ struct IntervalEditorView: View {
                     IntervalRow(
                         interval: intervals[i],
                         onLengthChange: { newLengthMin in
+                            let oldEnd   = intervals.wrappedValue[i].endSeconds
                             let startMin = intervals.wrappedValue[i].startSeconds / 60
                             let clamped  = max(1, newLengthMin)
                             let newEnd   = (startMin + clamped) * 60
+                            let shift    = newEnd - oldEnd
                             intervals.wrappedValue[i].endSeconds = newEnd
-                            // Push next interval's start; if that would invert it
-                            // (start >= end), bump its end so it keeps ≥1 min duration.
-                            if i < intervals.wrappedValue.count - 1 {
-                                intervals.wrappedValue[i + 1].startSeconds = newEnd
-                                if intervals.wrappedValue[i + 1].endSeconds <= newEnd {
-                                    intervals.wrappedValue[i + 1].endSeconds = newEnd + 60
-                                }
+                            // Shift every later interval by the delta, preserving
+                            // its duration. This keeps the timeline contiguous
+                            // whether the change shortens or lengthens this one.
+                            for j in intervals.wrappedValue.indices
+                                where intervals.wrappedValue[j].startSeconds >= oldEnd {
+                                intervals.wrappedValue[j].startSeconds += shift
+                                intervals.wrappedValue[j].endSeconds += shift
                             }
                             store.save()
                         },
@@ -60,7 +63,18 @@ struct IntervalEditorView: View {
                             store.save()
                         },
                         onDelete: {
+                            let deleted = intervals.wrappedValue[i]
+                            let deletedStart = deleted.startSeconds
+                            let shift = deleted.endSeconds - deleted.startSeconds
                             intervals.wrappedValue.remove(at: i)
+                            // Shift everything that was to the right of the deleted
+                            // interval back by its duration, so adjacency is preserved
+                            // instead of leaving a gap (or extending the neighbor).
+                            for j in intervals.wrappedValue.indices
+                                where intervals.wrappedValue[j].startSeconds >= deletedStart {
+                                intervals.wrappedValue[j].startSeconds -= shift
+                                intervals.wrappedValue[j].endSeconds -= shift
+                            }
                             store.save()
                         },
                         onCommit: { store.save() }

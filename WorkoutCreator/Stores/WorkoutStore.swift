@@ -17,7 +17,18 @@ final class WorkoutStore {
 
     func load(memberID: Int) {
         do {
-            workoutList = try repo.fetchAll(memberID: memberID)
+            var list = try repo.fetchAll(memberID: memberID)
+            // Heal stale Duration values from the MRC (source of truth) so the
+            // sidebar shows the real workout length, not the blank-template 3600.
+            for i in list.indices {
+                guard let contents = list[i].fileContents,
+                      let result = try? MRCParser.parse(contents),
+                      let lastEnd = result.details.intervals.last?.endSeconds,
+                      lastEnd > 0
+                else { continue }
+                list[i].duration = Double(lastEnd)
+            }
+            workoutList = list
             snippetList = try repo.fetchSnippets(memberID: memberID)
         } catch {
             workoutList = []
@@ -42,11 +53,27 @@ final class WorkoutStore {
               let memberID = Optional(workout.memberID)
         else { return }
 
+        // Auto-name intervals that haven't been given a custom name. Names follow
+        // the legacy TR pattern: "<Zone> <N>" where N is the sequence within
+        // that zone in time order. Anything that doesn't match the empty /
+        // "<Zone>"  / "<Zone> <digits>" shape is treated as user-customized and
+        // left alone (but still counted so auto siblings stay sequential).
+        var byStart = details.intervals.sorted { $0.startSeconds < $1.startSeconds }
+        var counts: [String: Int] = [:]
+        for i in byStart.indices {
+            let zone = Self.powerZoneName(for: byStart[i].power)
+            counts[zone, default: 0] += 1
+            if Self.isAutoIntervalName(byStart[i].name) {
+                byStart[i].name = "\(zone) \(counts[zone]!)"
+            }
+        }
+        details.intervals = byStart
+
         // Derive the power curve from intervals (sorted by start time).
         // Always emit both start and end points per interval. Two points at the
         // same minute encode a step transition in MRC; collapsing them makes the
         // player interpolate linearly between intervals (producing a ramp).
-        let sorted = details.intervals.sorted { $0.startSeconds < $1.startSeconds }
+        let sorted = byStart
         var points: [WorkoutPoint] = []
         for interval in sorted {
             let startMin = Double(interval.startSeconds) / 60
@@ -54,9 +81,9 @@ final class WorkoutStore {
             points.append(WorkoutPoint(minutes: startMin, ftpPercent: interval.power))
             points.append(WorkoutPoint(minutes: endMin, ftpPercent: interval.power))
         }
-        if !points.isEmpty {
-            details.workoutPoints = points
-        }
+        // Always overwrite — deleting an interval needs to be reflected, even
+        // when `points` shrinks (or becomes empty for an emptied workout).
+        details.workoutPoints = points
 
         let mrc = MRCWriter.write(
             name: workout.name,
@@ -70,6 +97,11 @@ final class WorkoutStore {
         let metrics = PowerMetrics.calculate(details.workoutPoints)
         workout.intensityFactor = metrics.intensityFactor * 100
         workout.tss = metrics.tss
+        // Duration is what TR shows in its UI — derive from the last interval's end.
+        if let lastEnd = sorted.last?.endSeconds {
+            workout.duration = Double(lastEnd)
+        }
+        workout.hasText = !details.cuePoints.isEmpty
         workout.isDirty = true
         workout.lastUpdate = ISO8601DateFormatter().string(from: Date())
 
@@ -93,7 +125,7 @@ final class WorkoutStore {
         ]
         let details = WorkoutDetails(
             workoutPoints: defaultPoints,
-            intervals: [WorkoutInterval(startSeconds: 0, endSeconds: 3600, name: "Workout", power: 50)],
+            intervals: [WorkoutInterval(startSeconds: 0, endSeconds: 3600, name: "", power: 50)],
             cuePoints: []
         )
         let mrc = MRCWriter.write(
@@ -110,6 +142,37 @@ final class WorkoutStore {
             workoutList.insert(workout, at: 0)
             select(workout)
         } catch {}
+    }
+
+    static let zoneNames = [
+        "Recovery", "Endurance", "Tempo", "Sweet Spot",
+        "Threshold", "VO2 Max", "Anaerobic Capacity", "Sprint"
+    ]
+
+    static func powerZoneName(for power: Double) -> String {
+        switch power {
+        case ..<55:    return "Recovery"
+        case 55..<75:  return "Endurance"
+        case 75..<88:  return "Tempo"
+        case 88..<95:  return "Sweet Spot"
+        case 95..<105: return "Threshold"
+        case 105..<120: return "VO2 Max"
+        case 120..<150: return "Anaerobic Capacity"
+        default:       return "Sprint"
+        }
+    }
+
+    static func isAutoIntervalName(_ name: String) -> Bool {
+        if name.isEmpty { return true }
+        for zone in zoneNames {
+            if name == zone { return true }
+            let prefix = "\(zone) "
+            if name.hasPrefix(prefix),
+               Int(name.dropFirst(prefix.count)) != nil {
+                return true
+            }
+        }
+        return false
     }
 
     func delete(_ workout: WorkoutFile) {

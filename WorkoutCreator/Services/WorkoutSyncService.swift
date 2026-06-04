@@ -37,6 +37,44 @@ final class WorkoutSyncService {
         }
 
         do {
+            // 0. Repair: hard-delete any locally-corrupt workouts (MRC unparseable)
+            // so they get re-downloaded fresh. Only purge non-dirty ones — never
+            // discard locally-edited workouts that happen to have malformed MRC.
+            var processed = processedIDs
+            for workout in (try? repo.fetchAll(memberID: userMemberID)) ?? [] {
+                guard let id = workout.id, !workout.isDirty else { continue }
+                let parses = (try? MRCParser.parse(workout.fileContents ?? "")) != nil
+                if !parses {
+                    print("[Sync] Workout \(id) has unparseable MRC — purging for re-download")
+                    try? repo.hardDelete(id: id)
+                    processed.remove(id)
+                }
+            }
+            processedIDs = processed
+
+            // 0.5 Re-format any active workout whose MRC lacks the leading
+            // meta-"Workout" interval (legacy pattern TR expects to find).
+            // Without it TR can crash at the end of the workout — see the
+            // 4x4 analysis. Re-write through MRCWriter (which now emits one)
+            // and mark dirty so step 3 pushes the fix to TR.
+            for var workout in (try? repo.fetchAll(memberID: userMemberID)) ?? [] {
+                guard let contents = workout.fileContents,
+                      !Self.hasMetaInterval(in: contents),
+                      let parsed = try? MRCParser.parse(contents)
+                else { continue }
+                let newMRC = MRCWriter.write(
+                    name: workout.name,
+                    intensityFactor: workout.intensityFactor,
+                    tss: workout.tss,
+                    memberID: workout.memberID,
+                    details: parsed.details
+                )
+                workout.fileContents = newMRC
+                workout.isDirty = true
+                try? repo.save(&workout)
+                print("[Sync] Re-formatted workout \(workout.id ?? -1) with meta-interval")
+            }
+
             // 1. Fetch server ID list
             let serverIDs = try await client.fetchWorkoutIDs()
             print("[Sync] Server has \(serverIDs.count) workout IDs")
@@ -128,6 +166,19 @@ final class WorkoutSyncService {
                 }
             }
 
+            // 6. Hard-delete orphaned inactive locals — rows we marked inactive
+            // that are no longer on the server (already deleted on TR in a
+            // previous run, or never made it there). They serve no purpose and
+            // just bloat the DB ("Local has 54" when 5 are visible).
+            let updatedLocal = (try? repo.fetchIDs()) ?? []
+            let toHardDelete = updatedLocal.filter { !$0.isActive && !serverIDSet.contains($0.id) }
+            if !toHardDelete.isEmpty {
+                print("[Sync] Hard-deleting \(toHardDelete.count) orphaned inactive workouts")
+            }
+            for record in toHardDelete {
+                try? repo.hardDelete(id: record.id)
+            }
+
             progress = 1.0
         } catch {
             lastError = error.localizedDescription
@@ -137,5 +188,19 @@ final class WorkoutSyncService {
 
     func clearProcessedIDs() {
         UserDefaults.standard.removeObject(forKey: "syncProcessedIDs")
+    }
+
+    /// True when the MRC's first INTERVAL DATA line is `0\tN\tWorkout` —
+    /// i.e., it already has the legacy meta-interval. Used by step 0.5 to
+    /// avoid re-formatting workouts that don't need it.
+    private static func hasMetaInterval(in mrc: String) -> Bool {
+        guard let marker = mrc.range(of: "[INTERVAL DATA]") else { return false }
+        let after = mrc[marker.upperBound...]
+        let firstLine = after.components(separatedBy: .newlines)
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard let line = firstLine else { return false }
+        let parts = line.components(separatedBy: "\t")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        return parts.count >= 3 && parts[0] == "0" && parts[2].lowercased() == "workout"
     }
 }

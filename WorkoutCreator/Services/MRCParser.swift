@@ -26,6 +26,14 @@ struct MRCParser {
 
         let intervalLines = (try? extractSection(lines, start: "[INTERVAL DATA]", end: "[END INTERVAL DATA]")) ?? []
         var intervals = try parseIntervalLines(intervalLines)
+        // Drop the leading meta-"Workout" interval (legacy MRC pattern that
+        // MRCWriter now also emits): when intervals[0] is named "Workout" and
+        // overlaps intervals[1]'s start, it's a span/fallback, not a real one.
+        if intervals.count >= 2,
+           intervals[0].name == "Workout",
+           intervals[0].endSeconds > intervals[1].startSeconds {
+            intervals.removeFirst()
+        }
         // Populate power for each interval from the course data (step-end: power = last point at or before interval start)
         for i in intervals.indices {
             let startMin = Double(intervals[i].startSeconds) / 60
@@ -34,7 +42,7 @@ struct MRCParser {
         }
 
         let textLines = (try? extractSection(lines, start: "[COURSE TEXT]", end: "[END COURSE TEXT]")) ?? []
-        let cuePoints = try parseCueLines(textLines)
+        let cuePoints = parseCueLines(textLines)
 
         return Result(
             name: name,
@@ -127,17 +135,26 @@ struct MRCParser {
         }
     }
 
-    private static func parseCueLines(_ lines: [String]) throws -> [CuePoint] {
-        return try lines.map { line in
+    // Skips lines we can't decode rather than failing the whole MRC parse —
+    // cues are decorative and TR's actual format varies (legacy
+    // `start\tduration\ttext` vs newer `start\ttext\t<font fields>`).
+    private static func parseCueLines(_ lines: [String]) -> [CuePoint] {
+        lines.compactMap { line in
             let parts = line.components(separatedBy: "\t")
-            guard parts.count >= 3,
-                  let start = Int(parts[0].trimmingCharacters(in: .whitespaces)),
-                  let duration = Int(parts[1].trimmingCharacters(in: .whitespaces))
-            else {
-                throw MRCParseError.invalidDataRow(line)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count >= 2, let start = Int(parts[0]) else { return nil }
+            // Legacy: parts[1] is duration (an Int), text follows.
+            if let duration = Int(parts[1]), parts.count >= 3 {
+                let text = parts[2...].joined(separator: "\t").trimmingCharacters(in: .whitespaces)
+                return CuePoint(startSeconds: start, durationSeconds: duration, text: text)
             }
-            let text = parts[2...].joined(separator: "\t").trimmingCharacters(in: .whitespaces)
-            return CuePoint(startSeconds: start, durationSeconds: duration, text: text)
+            // TR format: parts[1] is the cue text; parts[2...] are opaque font/
+            // color fields we round-trip verbatim.
+            let text = parts[1]
+            let suffix = parts.count > 2
+                ? parts[2...].joined(separator: "\t")
+                : "8\t0\t0\t72\t16777215\t0"
+            return CuePoint(startSeconds: start, durationSeconds: 5, text: text, formatSuffix: suffix)
         }
     }
 }

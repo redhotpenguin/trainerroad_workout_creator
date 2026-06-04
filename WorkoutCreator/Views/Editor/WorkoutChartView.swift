@@ -20,13 +20,39 @@ private let kPowerZones: [PowerZoneSpec] = [
 
 struct WorkoutChartView: View {
     @Environment(WorkoutStore.self) private var store
-
-    private var points: [WorkoutPoint] {
-        store.currentDetails?.workoutPoints ?? []
-    }
+    @AppStorage("userFTP") private var ftp: Int = 250
 
     private var intervals: [WorkoutInterval] {
         store.currentDetails?.intervals ?? []
+    }
+
+    // Derive points from intervals so the chart updates immediately on power /
+    // length edits (workoutPoints only refreshes when save() runs). Falls back
+    // to the stored workoutPoints when:
+    //   - there are no intervals (ramps, course-only workouts), or
+    //   - intervals don't cover the timeline contiguously (Tabata-style
+    //     workouts with rest gaps between sprints — the MRC's COURSE DATA
+    //     encodes the gap power, fabricating from intervals would smear the
+    //     last sprint's power across the rest).
+    private var points: [WorkoutPoint] {
+        let ivs = intervals
+        guard !ivs.isEmpty else {
+            return store.currentDetails?.workoutPoints ?? []
+        }
+        let sorted = ivs.sorted { $0.startSeconds < $1.startSeconds }
+        let isContiguous = zip(sorted, sorted.dropFirst())
+            .allSatisfy { $0.endSeconds == $1.startSeconds }
+        guard isContiguous else {
+            return store.currentDetails?.workoutPoints ?? []
+        }
+        var result: [WorkoutPoint] = []
+        for interval in sorted {
+            let startMin = Double(interval.startSeconds) / 60
+            let endMin   = Double(interval.endSeconds)   / 60
+            result.append(WorkoutPoint(minutes: startMin, ftpPercent: interval.power))
+            result.append(WorkoutPoint(minutes: endMin, ftpPercent: interval.power))
+        }
+        return result
     }
 
     private var maxMinutes: Double {
@@ -121,15 +147,6 @@ struct WorkoutChartView: View {
                         .foregroundStyle(.secondary.opacity(0.4))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
                 }
-                RuleMark(x: .value("Label", startMin + (endMin - startMin) / 2))
-                    .opacity(0)
-                    .annotation(position: .top, alignment: .center) {
-                        Text(interval.name)
-                            .font(.system(size: 9))
-                            .foregroundStyle(color.opacity(0.8))
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
                 if endMin < maxMinutes {
                     RuleMark(x: .value("End", endMin))
                         .foregroundStyle(.secondary.opacity(0.4))
@@ -137,18 +154,22 @@ struct WorkoutChartView: View {
                 }
             }
 
-            // Control point dots
+            // Control point dots — only at interval STARTS (even indices in the
+            // start/end pair sequence) so each boundary gets one label showing
+            // the new interval's percentage, not the outgoing one.
             ForEach(Array(points.enumerated()), id: \.offset) { i, point in
-                PointMark(
-                    x: .value("Minutes", point.minutes),
-                    y: .value("FTP%", point.ftpPercent)
-                )
-                .foregroundStyle(.blue)
-                .symbolSize(40)
-                .annotation(position: .top) {
-                    Text("\(Int(point.ftpPercent))%")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
+                if i % 2 == 0 {
+                    PointMark(
+                        x: .value("Minutes", point.minutes),
+                        y: .value("FTP%", point.ftpPercent)
+                    )
+                    .foregroundStyle(.blue)
+                    .symbolSize(40)
+                    .annotation(position: .top) {
+                        Text("\(Int(point.ftpPercent))%")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -161,10 +182,19 @@ struct WorkoutChartView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(values: .stride(by: 25)) { value in
+            // Trailing: FTP percent (with gridlines)
+            AxisMarks(position: .trailing, values: .stride(by: 25)) { value in
                 AxisGridLine()
                 AxisValueLabel {
                     if let pct = value.as(Double.self) { Text("\(Int(pct))%") }
+                }
+            }
+            // Leading: power in watts at the same percentage levels (FTP × pct ÷ 100)
+            AxisMarks(position: .leading, values: .stride(by: 25)) { value in
+                AxisValueLabel {
+                    if let pct = value.as(Double.self) {
+                        Text("\(Int(Double(ftp) * pct / 100)) W")
+                    }
                 }
             }
         }

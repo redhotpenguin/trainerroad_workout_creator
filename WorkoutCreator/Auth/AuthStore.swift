@@ -9,6 +9,7 @@ final class AuthStore {
     var loginError: String?
 
     private var client: TrainerRoadClient?
+    private var restoreAttempted = false
 
     func login(username: String, password: String) async {
         isLoggingIn = true
@@ -45,6 +46,11 @@ final class AuthStore {
     }
 
     func restoreSession() async {
+        // ContentView's .task can fire a second time when the inner view
+        // switches from LoginView to NavigationSplitView after a successful
+        // restore — without this guard that triggers a second keychain read.
+        guard !restoreAttempted else { return }
+        restoreAttempted = true
         guard let (username, password) = KeychainHelper.load() else { return }
         await authenticate(username: username, password: password)
     }

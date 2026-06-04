@@ -6,7 +6,6 @@ struct WorkoutListView: View {
     @Environment(AuthStore.self) private var authStore
     @State private var searchText = ""
     @State private var showFavoritesOnly = false
-    @State private var showSnippets = false
 
     private var filteredWorkouts: [WorkoutFile] {
         var list = store.workoutList
@@ -56,12 +55,6 @@ struct WorkoutListView: View {
                 .help("Favorites only")
             }
             ToolbarItem {
-                Toggle(isOn: $showSnippets) {
-                    Image(systemName: "square.stack")
-                }
-                .help("Show snippets")
-            }
-            ToolbarItem {
                 Button {
                     guard let member = authStore.currentMember,
                           let client = authStore.makeClient() else { return }
@@ -77,10 +70,7 @@ struct WorkoutListView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                if showSnippets { SnippetPaletteView() }
-                syncStatusBar
-            }
+            syncStatusBar
         }
         .onChange(of: store.selectedWorkoutID) { _, id in
             guard let id,

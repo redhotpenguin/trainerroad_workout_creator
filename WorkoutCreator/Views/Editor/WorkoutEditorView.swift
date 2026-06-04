@@ -5,6 +5,7 @@ struct WorkoutEditorView: View {
     @Environment(WorkoutStore.self) private var store
     @Environment(AuthStore.self) private var authStore
     @State private var editingName = false
+    @AppStorage("userFTP") private var ftp: Int = 250
 
     var body: some View {
         Group {
@@ -26,7 +27,7 @@ struct WorkoutEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // Header
-                HStack {
+                HStack(spacing: 12) {
                     TextField("Workout Name", text: Binding(
                         get: { store.currentWorkout?.name ?? "" },
                         set: { store.currentWorkout?.name = $0 }
@@ -36,7 +37,18 @@ struct WorkoutEditorView: View {
 
                     Spacer()
 
-                    WorkoutStatsBadge(tss: workout.tss, durationSeconds: workout.duration)
+                    HStack(spacing: 4) {
+                        Text("FTP")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("", value: $ftp, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 56)
+                            .multilineTextAlignment(.trailing)
+                        Text("W")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 // Chart
@@ -46,10 +58,8 @@ struct WorkoutEditorView: View {
                 // Intervals
                 IntervalEditorView()
 
-                // Cues (if any)
-                if workout.hasText || !(store.currentDetails?.cuePoints.isEmpty ?? true) {
-                    CueEditorView()
-                }
+                // Cues — always visible so users can add new ones to any workout.
+                CueEditorView()
             }
             .padding()
         }
