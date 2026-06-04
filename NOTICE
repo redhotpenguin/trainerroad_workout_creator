@@ -1,0 +1,25 @@
+WorkoutCreator (Swift native port)
+Copyright (c) 2026 Fred Moyer
+
+This is an unofficial native macOS reimplementation of TrainerRoad's
+WorkoutCreator application. It is not affiliated with, endorsed by, or
+supported by TrainerRoad.
+
+The following are TrainerRoad's intellectual property and are referenced or
+relied upon, not licensed under this project's MIT license:
+
+- The original WorkoutCreator application design, user interface patterns,
+  and overall workout-authoring workflow.
+- The .mrc workout file format.
+- The SQLite schema used for local workout storage in the original
+  application, which this port mirrors for compatibility.
+- The TrainerRoad REST API (api.trainerroad.com), which this software calls
+  on behalf of an authenticated TrainerRoad user to sync workouts.
+
+What is licensed under MIT in this repository is the Swift / SwiftUI
+implementation: source code, build configuration, and project files. Using
+this software requires a valid TrainerRoad account; nothing in this project
+grants any right to TrainerRoad's services, trademarks, or proprietary
+content.
+
+"TrainerRoad" is a trademark of TrainerRoad, LLC.
