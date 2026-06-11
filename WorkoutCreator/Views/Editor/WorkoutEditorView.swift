@@ -5,6 +5,7 @@ struct WorkoutEditorView: View {
     @Environment(WorkoutStore.self) private var store
     @Environment(AuthStore.self) private var authStore
     @State private var editingName = false
+    @State private var showingZones = false
     @AppStorage("userFTP") private var ftp: Int = 250
 
     var body: some View {
@@ -34,6 +35,18 @@ struct WorkoutEditorView: View {
                     ))
                     .font(.title2.bold())
                     .textFieldStyle(.plain)
+                    .frame(maxWidth: 280, alignment: .leading)
+
+                    Button { showingZones.toggle() } label: {
+                        Text("Power Zone Definitions")
+                            .font(.callout)
+                            .foregroundStyle(.blue)
+                            .underline(true, pattern: .dot)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showingZones, arrowEdge: .bottom) {
+                        PowerZonesPopover(ftp: ftp)
+                    }
 
                     Spacer()
 
@@ -88,4 +101,59 @@ struct WorkoutEditorView: View {
             }
         }
     }
+}
+
+// Power zone bands aligned with WorkoutChartView's kPowerZones and
+// WorkoutStore.powerZoneName boundaries. Listed as inclusive % ranges.
+// Coggan / TrainingPeaks 7-level power training zones.
+private let powerZoneRows: [(zone: String, name: String, low: Int, high: Int)] = [
+    ("Z1", "Active Recovery",    0,   55),
+    ("Z2", "Endurance",          56,  75),
+    ("Z3", "Tempo",              76,  90),
+    ("Z4", "Lactate Threshold",  91,  105),
+    ("Z5", "VO2 Max",            106, 120),
+    ("Z6", "Anaerobic Capacity", 121, 150),
+    ("Z7", "Neuromuscular",      151, 250),
+]
+
+struct PowerZonesPopover: View {
+    let ftp: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Power Zones (FTP \(ftp) W)")
+                .font(.headline)
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 4) {
+                GridRow {
+                    Text("Zone").bold()
+                    Text("Name").bold()
+                    Text("% FTP").bold()
+                    Text("Watts").bold()
+                }
+                .foregroundStyle(.secondary)
+                ForEach(powerZoneRows, id: \.zone) { row in
+                    GridRow {
+                        Text(row.zone)
+                        Text(row.name)
+                        Text("\(row.low)–\(row.high)%")
+                            .monospacedDigit()
+                        Text("\(row.low * ftp / 100)–\(row.high * ftp / 100) W")
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .font(.callout)
+        }
+        .padding(12)
+    }
+}
+
+private func powerZonesTooltip(ftp: Int) -> String {
+    powerZoneRows.map { row in
+        let lowW  = row.low  * ftp / 100
+        let highW = row.high * ftp / 100
+        return String(format: "%@ %-18@ %3d–%3d%%   %4d–%4d W",
+                      row.zone, row.name as NSString,
+                      row.low, row.high, lowW, highW)
+    }.joined(separator: "\n")
 }

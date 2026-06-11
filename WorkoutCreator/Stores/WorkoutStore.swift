@@ -144,21 +144,21 @@ final class WorkoutStore {
         } catch {}
     }
 
+    // Coggan / TrainingPeaks 7-level power training zones.
     static let zoneNames = [
-        "Recovery", "Endurance", "Tempo", "Sweet Spot",
-        "Threshold", "VO2 Max", "Anaerobic Capacity", "Sprint"
+        "Active Recovery", "Endurance", "Tempo",
+        "Lactate Threshold", "VO2 Max", "Anaerobic Capacity", "Neuromuscular"
     ]
 
     static func powerZoneName(for power: Double) -> String {
         switch power {
-        case ..<55:    return "Recovery"
-        case 55..<75:  return "Endurance"
-        case 75..<88:  return "Tempo"
-        case 88..<95:  return "Sweet Spot"
-        case 95..<105: return "Threshold"
-        case 105..<120: return "VO2 Max"
-        case 120..<150: return "Anaerobic Capacity"
-        default:       return "Sprint"
+        case ..<56:     return "Active Recovery"
+        case 56..<76:   return "Endurance"
+        case 76..<91:   return "Tempo"
+        case 91..<106:  return "Lactate Threshold"
+        case 106..<121: return "VO2 Max"
+        case 121..<151: return "Anaerobic Capacity"
+        default:        return "Neuromuscular"
         }
     }
 

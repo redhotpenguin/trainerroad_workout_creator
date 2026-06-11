@@ -8,14 +8,16 @@ private struct PowerZoneSpec {
     let color: Color
 }
 
+// Coggan / TrainingPeaks 7-level power training zones.
+// See https://www.trainingpeaks.com/blog/power-training-levels/
 private let kPowerZones: [PowerZoneSpec] = [
     PowerZoneSpec(name: "Z1", minPct: 0,   maxPct: 56,  color: .gray),
     PowerZoneSpec(name: "Z2", minPct: 56,  maxPct: 76,  color: .blue),
-    PowerZoneSpec(name: "Z3", minPct: 76,  maxPct: 88,  color: .green),
-    PowerZoneSpec(name: "SS", minPct: 88,  maxPct: 95,  color: .yellow),
-    PowerZoneSpec(name: "Z4", minPct: 95,  maxPct: 106, color: .orange),
-    PowerZoneSpec(name: "Z5", minPct: 106, maxPct: 121, color: .red),
-    PowerZoneSpec(name: "Z6", minPct: 121, maxPct: 150, color: .purple),
+    PowerZoneSpec(name: "Z3", minPct: 76,  maxPct: 91,  color: .green),
+    PowerZoneSpec(name: "Z4", minPct: 91,  maxPct: 106, color: .teal),
+    PowerZoneSpec(name: "Z5", minPct: 106, maxPct: 121, color: .orange),
+    PowerZoneSpec(name: "Z6", minPct: 121, maxPct: 151, color: .red),
+    PowerZoneSpec(name: "Z7", minPct: 151, maxPct: 250, color: .purple),
 ]
 
 struct WorkoutChartView: View {
@@ -166,9 +168,12 @@ struct WorkoutChartView: View {
                     .foregroundStyle(.blue)
                     .symbolSize(40)
                     .annotation(position: .top) {
-                        Text("\(Int(point.ftpPercent))%")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.secondary)
+                        VStack(spacing: 0) {
+                            Text("\(Int(point.ftpPercent))%")
+                            Text("\(Int(Double(ftp) * point.ftpPercent / 100))W")
+                        }
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
                     }
                 }
             }
